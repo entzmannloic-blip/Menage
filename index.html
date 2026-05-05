@@ -885,6 +885,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-h
         <button class="plan-tab" id="planTabLoic" onclick="switchPlanTab('loic')">👤 Loïc</button>
         <button class="plan-tab" id="planTabPerrine" onclick="switchPlanTab('perrine')">👤 Perrine</button>
         <button class="plan-tab" id="planTabSynth" onclick="switchPlanTab('synth')">📋 Synthèse</button>
+        <button class="plan-tab" id="planTabAnnual" onclick="switchPlanTab('annual')">📆 Annuel</button>
         <button class="plan-tab" id="planTabHist" onclick="switchPlanTab('hist')">Historique</button>
         <button class="plan-tab" id="planTabCharge" onclick="switchPlanTab('charge')">📊 Charge</button>
       </div>
@@ -1073,21 +1074,23 @@ const GENERAL=[
   {id:'prep',name:'Préparation appartement',icon:'🔑',color:'#8f4408',colorL:'#fceedd',tasks:[
     // Chambre 1
     {id:'p_dress',label:'Transférer dressing chambre 1 dans chambre 2',min:20,effort:3},
-    {id:'p_draps1',label:'Enlever draps, mettre draps — Chambre 1',min:10,effort:2},
+    {id:'p_draps1',label:'Faire le lit chambre 1',min:10,effort:2},
     {id:'p_ch1',label:'Ranger affaires chambre 1 dans étagère dégagements',min:15,effort:3},
     // Chambre 2
-    {id:'p_draps2',label:'Enlever draps, mettre draps — Chambre 2',min:10,effort:2},
+    {id:'p_draps2',label:'Faire le lit chambre 2',min:10,effort:2},
     {id:'p_commode',label:'Ranger commode / bureaux chambre 2',min:5,effort:1},
     // Salle de bain
-    {id:'p_serv',label:'Enlever les serviettes de bain, sortir serviettes de bain',min:5,effort:1},
-    {id:'p_tapis',label:'Enlever tapis de douche, sortir nouveau tapis de douche',min:3,effort:1},
+    {id:'p_serv',label:'Sortir les serviettes de bain invités',min:5,effort:1},
+    {id:'p_tapis',label:'Sortir tapis de douche invité',min:3,effort:1},
     {id:'p_sdb',label:'Ranger affaires salle de bain dans étagère dégagement',min:10,effort:2},
-    // Animaux
-    {id:'p_croq',label:'Remplir la boîte de croquettes et le distributeur',min:5,effort:1},
-    {id:'p_font',label:'Laver et remplir la fontaine des chats',min:10,effort:2},
+    // Cuisine
+    {id:'p_frigo',label:'Vider et vérifier le frigo',min:10,effort:2},
+    {id:'p_lv',label:'Vider et vérifier le lave-vaisselle',min:5,effort:1},
+    {id:'p_torchon',label:'Sortir les torchons invités',min:3,effort:1},
     // Robot aspirateur
     {id:'p_robot',label:'Déprogrammer le robot aspirateur',min:2,effort:1},
     {id:'p_robot2',label:'Nettoyer et remplir le robot aspirateur',min:8,effort:2},
+    {id:'p_distrib',label:'Décaler l\'horaire distributeur de croquettes',min:5,effort:1},
     // Général
     {id:'p_plante',label:'Arroser les plantes',min:5,effort:1},
     {id:'p_poub',label:'Poubelles : verre, compost, carton, déchets ménagers (dont salle de bain et toilettes)',min:8,effort:2},
@@ -1493,7 +1496,14 @@ function setFilter(f,el){
   document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('fa','fp','fd','fe1','fe2','fe3'));
   const map={all:'fa',pending:'fp',done:'fd',e1:'fe1',e2:'fe2',e3:'fe3'};
   el.classList.add(map[f]||'fa');
-  renderContent();updateUI();
+  // In ménage week view, filter applies to inline planning tasks
+  if(appMode==='menage'&&activeRoom==='__week__'){
+    const area=document.getElementById('content');
+    if(area){area.innerHTML='';renderInlineWeekPlanning(area);}
+  } else {
+    renderContent();
+  }
+  updateUI();
 }
 
 /* ═══ ACTIONS ═══ */
@@ -2698,8 +2708,18 @@ function renderInlineWeekPlanning(area){
     return col;
   }
 
-  grid.appendChild(buildPersonCol('loic',loicTasks,'#1b4b87'));
-  grid.appendChild(buildPersonCol('perrine',perrineTasks,'#b07a2c'));
+  function applyWeekFilter(tasks){
+    if(filter==='all') return tasks;
+    if(filter==='done') return tasks.filter(t=>isWeekDone(t.id,wk));
+    if(filter==='pending') return tasks.filter(t=>!isWeekDone(t.id,wk));
+    if(filter==='e1') return tasks.filter(t=>(st['ef_'+t.id]??t.effort??0)===1);
+    if(filter==='e2') return tasks.filter(t=>(st['ef_'+t.id]??t.effort??0)===2);
+    if(filter==='e3') return tasks.filter(t=>(st['ef_'+t.id]??t.effort??0)===3);
+    return tasks;
+  }
+
+  grid.appendChild(buildPersonCol('loic',applyWeekFilter(loicTasks),'#1b4b87'));
+  grid.appendChild(buildPersonCol('perrine',applyWeekFilter(perrineTasks),'#b07a2c'));
   area.appendChild(grid);
 }
 
@@ -3070,11 +3090,11 @@ function closePlanning(){
 }
 function switchPlanTab(tab){
   planTab=tab;
-  ['week','loic','perrine','synth','hist','charge'].forEach(t=>{
+  ['week','loic','perrine','synth','annual','hist','charge'].forEach(t=>{
     const el=document.getElementById('planTab'+t.charAt(0).toUpperCase()+t.slice(1));
     if(el)el.classList.toggle('active',t===tab);
   });
-  const showNav=['week','loic','perrine','synth'].includes(tab);
+  const showNav=['week','loic','perrine'].includes(tab);
   document.getElementById('planWeekNav').style.display=showNav?'flex':'none';
   renderPlanning();
 }
@@ -3094,6 +3114,7 @@ function renderPlanning(){
   else if(planTab==='loic') renderPlanPerson(body,'loic','👤','#1b4b87');
   else if(planTab==='perrine') renderPlanPerson(body,'perrine','👤','#b07a2c');
   else if(planTab==='synth') renderPlanSynth(body);
+  else if(planTab==='annual') renderPlanAnnual(body);
   else if(planTab==='hist') renderPlanHist(body);
   else renderPlanCharge(body);
 }
@@ -3215,45 +3236,78 @@ function renderPlanPerson(body,person,emoji,color){
 }
 
 /* ── Vue synthétique style Excel ── */
+/* ── Synthèse année courante ── */
+let synthYear=new Date().getFullYear();
+
 function renderPlanSynth(body){
   body.className='plan-body full';
   body.style.padding='0';
-  body.style.overflowY='auto';
+  body.style.overflowY='hidden';
 
   const allTaskDefs=[];
   ROOMS.forEach(sec=>sec.tasks.forEach(t=>allTaskDefs.push({...t,secId:sec.id,secName:sec.name,secIcon:sec.icon})));
 
   const freqAbbr={weekly:'H',biweekly:'2S',monthly:'M',bimonthly:'2M'};
-  const WEEK_W=44; // px per week column — CSS overrides on mobile
-  const FREQ_W=36; // px freq column
+  const WEEK_W=44;
+  const FREQ_W=32;
+  const curWk=currentWeekKey();
+  const curYear=new Date().getFullYear();
 
-  // Dynamically compute how many weeks fit in the modal width
-  // Modal max is 1200px, minus padding/scrollbar ~20px, minus task col (~260px), minus freq col
-  // We show at minimum 16 weeks (full 2-month cycle), scrollable
-  const N_WEEKS=24; // 2 back + 22 forward = covers full 2-month cycle with room
+  // Generate all weeks of selected year (ISO weeks)
+  function getYearWeeks(year){
+    const weeks=[];
+    // Find S01 of the year
+    let d=new Date(year,0,4); // Jan 4 is always in week 1
+    const{week:firstWeek}=isoWeek(d);
+    // Start from W01
+    let wk=year+'W01';
+    // Generate up to 53 weeks
+    for(let i=0;i<54;i++){
+      const{year:wy,week:wn}=parseWeekKey(wk);
+      if(wy>year) break; // stop when we cross into next year
+      weeks.push(wk);
+      wk=nextWeekKey(wk);
+    }
+    return weeks;
+  }
 
-  const weeks=[];
-  let wk=currentWeekKey();
-  for(let i=0;i<2;i++) wk=prevWeekKey(wk);
-  for(let i=0;i<N_WEEKS;i++){weeks.push(wk);wk=nextWeekKey(wk);}
+  const weeks=getYearWeeks(synthYear);
+  const minYear=2025;
+  const maxYear=2040;
 
+  // ── Year selector bar ──
+  const yearBar=document.createElement('div');
+  yearBar.style.cssText='display:flex;align-items:center;gap:10px;padding:.625rem 1.25rem;border-bottom:1px solid var(--bd);background:var(--sf);flex-shrink:0;';
+  yearBar.innerHTML=`
+    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--tx3);">Année</span>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <button onclick="if(synthYear>${minYear}){synthYear--;renderPlanning();}" style="width:28px;height:28px;border-radius:99px;border:1px solid var(--bdm);background:var(--sf);color:var(--tx2);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;">‹</button>
+      <span style="font-family:'Fraunces',serif;font-size:18px;font-weight:500;min-width:50px;text-align:center;">${synthYear}</span>
+      <button onclick="if(synthYear<${maxYear}){synthYear++;renderPlanning();}" style="width:28px;height:28px;border-radius:99px;border:1px solid var(--bdm);background:var(--sf);color:var(--tx2);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;">›</button>
+    </div>
+    <span style="font-size:11px;color:var(--tx3);">${weeks.length} semaines · ${synthYear===curYear?'<span style="color:var(--gr);font-weight:600;">Année en cours</span>':synthYear>curYear?'🔮 Projection':'📦 Historique'}</span>
+    <span style="margin-left:auto;font-size:10px;color:var(--tx3);">${minYear} — ${maxYear}</span>`;
+  body.appendChild(yearBar);
+
+  // ── Table ──
   let html=`
-  <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 200px);width:100%;">
+  <div style="overflow-x:auto;overflow-y:auto;flex:1;width:100%;">
   <table style="border-collapse:collapse;table-layout:fixed;width:max-content;min-width:100%;">
     <colgroup>
-      <col style="width:auto;min-width:200px;">
+      <col style="width:auto;min-width:180px;">
       <col style="width:${FREQ_W}px;">
-      ${weeks.map(()=>`<col style="width:${WEEK_W}px;">`).join('')}
+      ${weeks.map(w=>`<col style="width:${WEEK_W}px;">`).join('')}
     </colgroup>
     <thead>
       <tr style="background:var(--bg);">
         <th style="text-align:left;padding:8px 10px 8px 1.25rem;border-bottom:2px solid var(--bd);font-size:10px;color:var(--tx3);font-weight:600;position:sticky;left:0;z-index:11;background:var(--bg);white-space:nowrap;">Tâche</th>
-        <th style="text-align:center;padding:8px 4px;border-bottom:2px solid var(--bd);font-size:10px;color:var(--tx3);font-weight:600;position:sticky;left:0;z-index:11;background:var(--bg);" id="synth-freq-th">Fréq.</th>`;
+        <th style="text-align:center;padding:8px 4px;border-bottom:2px solid var(--bd);font-size:10px;color:var(--tx3);font-weight:600;position:sticky;left:0;z-index:11;background:var(--bg);">Fréq.</th>`;
 
   weeks.forEach(w=>{
-    const isCur=w===currentWeekKey();
-    html+=`<th style="text-align:center;padding:5px 1px;border-bottom:2px solid ${isCur?'var(--gr)':'var(--bd)'};font-size:9px;color:${isCur?'var(--gr)':'var(--tx3)'};font-weight:${isCur?700:500};background:${isCur?'var(--grl)':'var(--bg)'};white-space:nowrap;">
-      ${weekLabel(w).split(' ')[0]}<br><span style="font-size:7.5px;opacity:.65;">${weekLabel(w).split(' ')[1]}</span>
+    const isCur=w===curWk;
+    const isPast=w<curWk;
+    html+=`<th style="text-align:center;padding:5px 1px;border-bottom:2px solid ${isCur?'var(--gr)':'var(--bd)'};font-size:9px;color:${isCur?'var(--gr)':isPast?'var(--tx3)':'var(--tx2)'};font-weight:${isCur?700:400};background:${isCur?'var(--grl)':isPast?'var(--s2)':'var(--bg)'};white-space:nowrap;opacity:${isPast?0.6:1};">
+      ${weekLabel(w).split(' ')[0]}<br><span style="font-size:7px;opacity:.6;">${weekLabel(w).split(' ')[1]}</span>
     </th>`;
   });
   html+='</tr></thead><tbody>';
@@ -3263,42 +3317,41 @@ function renderPlanSynth(body){
     if(task.secId!==lastSec){
       lastSec=task.secId;
       const sec=ROOMS.find(r=>r.id===task.secId);
-      html+=`<tr>
-        <td colspan="${weeks.length+2}" style="padding:8px 10px 3px 1.25rem;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--tx3);background:var(--s2);position:sticky;left:0;white-space:nowrap;">${sec?.icon||''} ${sec?.name||task.secId}</td>
-      </tr>`;
+      html+=`<tr><td colspan="${weeks.length+2}" style="padding:8px 10px 3px 1.25rem;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--tx3);background:var(--s2);position:sticky;left:0;white-space:nowrap;">${sec?.icon||''} ${sec?.name||task.secId}</td></tr>`;
     }
 
     html+=`<tr style="border-bottom:1px solid var(--bd);">
       <td style="padding:5px 10px 5px 1.25rem;position:sticky;left:0;background:var(--sf);z-index:5;">
-        <div style="font-size:12px;color:var(--tx);white-space:nowrap;">${task.label}</div>
-        <div style="font-size:10px;color:var(--tx3);margin-top:1px;display:flex;gap:5px;align-items:center;">
-          <span>${fmtMin(getMin(task))}</span>
-          <span style="color:${['var(--tx3)','var(--gr)','var(--am)','var(--rd)'][task.effort||0]}">${['—','🟢','🟡','🔴'][task.effort||0]}</span>
-        </div>
+        <div style="font-size:11.5px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">${task.label}</div>
+        <div style="font-size:9px;color:var(--tx3);margin-top:1px;">${fmtMin(getMin(task))} · ${{0:'—',1:'🟢',2:'🟡',3:'🔴'}[st['ef_'+task.id]??task.effort??0]}</div>
       </td>
-      <td style="text-align:center;padding:4px 2px;background:var(--sf);font-size:9px;font-weight:600;color:var(--tx3);border-left:1px solid var(--bd);border-right:1px solid var(--bd);white-space:nowrap;">${freqAbbr[task.frequency]||'?'}</td>`;
+      <td style="text-align:center;padding:3px 2px;background:var(--sf);font-size:9px;font-weight:600;color:var(--tx3);border-left:1px solid var(--bd);border-right:1px solid var(--bd);">${freqAbbr[task.frequency]||'?'}</td>`;
 
     weeks.forEach(w=>{
       const{week}=parseWeekKey(w);
       const scheduled=isScheduledThisWeek(task,week);
       const owner=scheduled?taskOwnerForWeek(task,week):null;
       const done=scheduled&&isWeekDone(task.id,w);
-      const isCur=w===currentWeekKey();
+      const isCur=w===curWk;
+      const isPast=w<curWk;
 
       let bg,txt,txtCol,outline='';
       if(!scheduled){
-        bg='var(--s2)';txt='';txtCol='';
+        bg=isPast?'rgba(0,0,0,.03)':'var(--s2)';txt='';txtCol='';
       } else if(done){
         bg='var(--grl)';txt='✓';txtCol='var(--gr)';
+      } else if(isPast&&!done){
+        // Past week, not done → show as missed
+        bg='rgba(178,47,34,.06)';txt=scheduled?(owner==='loic'?'L':'P'):'';txtCol='rgba(178,47,34,.5)';
       } else if(owner==='loic'){
-        bg='rgba(27,75,135,.1)';txt='L';txtCol='#1b4b87';
+        bg='rgba(27,75,135,.08)';txt='L';txtCol='#1b4b87';
       } else {
-        bg='rgba(176,122,44,.1)';txt='P';txtCol='#b07a2c';
+        bg='rgba(176,122,44,.08)';txt='P';txtCol='#b07a2c';
       }
       if(isCur) outline='outline:2px solid var(--gr);outline-offset:-2px;position:relative;z-index:1;';
 
       html+=`<td style="text-align:center;padding:3px 1px;background:${bg};border-left:1px solid var(--bd);${outline}">
-        <span style="font-size:11px;font-weight:700;color:${txtCol};">${txt}</span>
+        <span style="font-size:10px;font-weight:700;color:${txtCol};">${txt}</span>
       </td>`;
     });
     html+='</tr>';
@@ -3307,34 +3360,261 @@ function renderPlanSynth(body){
   html+=`</tbody></table></div>`;
 
   // Legend
-  html+=`<div style="display:flex;gap:12px;flex-wrap:wrap;padding:.625rem 1.25rem;border-top:1px solid var(--bd);font-size:10px;color:var(--tx3);background:var(--sf);flex-shrink:0;">
-    <span><b style="color:#1b4b87;">L</b> = Loïc</span>
-    <span><b style="color:#b07a2c;">P</b> = Perrine</span>
+  html+=`<div style="display:flex;gap:10px;flex-wrap:wrap;padding:.5rem 1.25rem;border-top:1px solid var(--bd);font-size:10px;color:var(--tx3);background:var(--sf);flex-shrink:0;">
+    <span><b style="color:#1b4b87;">L</b> Loïc</span>
+    <span><b style="color:#b07a2c;">P</b> Perrine</span>
     <span style="color:var(--gr);">✓ Fait</span>
+    <span style="color:rgba(178,47,34,.6);">L/P grisé = non fait (passé)</span>
     <span style="opacity:.4;">— Non prévu</span>
-    <span style="margin-left:auto;font-style:italic;opacity:.6;">H=Hebdo · 2S=Bi-mensuel · M=Mensuel · 2M=2 mois · Colonne verte = semaine actuelle</span>
+    <span style="margin-left:auto;font-style:italic;opacity:.6;">H=Hebdo · 2S=Bi-mensuel · M=Mensuel · 2M=2 mois</span>
   </div>`;
 
-  body.innerHTML=html;
+  const tableWrap=document.createElement('div');
+  tableWrap.style.cssText='display:flex;flex-direction:column;flex:1;overflow:hidden;';
+  tableWrap.innerHTML=html;
+  body.appendChild(tableWrap);
 
-  // After render: measure task column width and align freq column
+  // Auto-scroll to current week
   requestAnimationFrame(()=>{
-    const taskTds=body.querySelectorAll('tbody td:first-child');
-    let maxW=0;
-    taskTds.forEach(td=>{maxW=Math.max(maxW,td.scrollWidth);});
-    if(maxW>0){
-      // Set freq col sticky left = task col width
-      body.querySelectorAll('thead th:nth-child(2), tbody td:nth-child(2)').forEach(el=>{
-        el.style.left=maxW+'px';
-      });
+    const scrollEl=body.querySelector('div[style*="overflow-x:auto"]');
+    if(scrollEl){
+      const curIdx=weeks.indexOf(curWk);
+      if(curIdx>=0) scrollEl.scrollLeft=Math.max(0,(curIdx-1)*WEEK_W);
     }
-    // Scroll to show current week (col index 2 = first data col, +2 for task+freq)
-    const curColIdx=2+2; // 2 weeks back
-    const scrollEl=body.querySelector('div[style*="overflow-x"]');
-    if(scrollEl) scrollEl.scrollLeft=Math.max(0,(curColIdx-1)*WEEK_W - 20);
+    // Fix freq col sticky position
+    body.querySelectorAll('thead th:nth-child(2),tbody td:nth-child(2)').forEach(el=>{
+      const taskTh=body.querySelector('thead th:first-child');
+      if(taskTh) el.style.left=taskTh.offsetWidth+'px';
+    });
   });
 }
 
+/* ── Archive annuelle ── */
+function checkYearArchive(){
+  const{week,year}=isoWeek(new Date());
+  // Propose archive at end of year (week 50+)
+  if(week<50)return;
+  const archKey='arch_'+year;
+  if(mst[archKey])return; // already archived
+  // Show banner
+  const existing=document.getElementById('archiveBanner');
+  if(existing)return;
+  const banner=document.createElement('div');
+  banner.id='archiveBanner';
+  banner.style.cssText='position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#1b4b87;color:#fff;padding:10px 20px;border-radius:12px;font-size:13px;font-family:"DM Sans",sans-serif;z-index:9000;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.2);max-width:calc(100vw - 2rem);';
+  banner.innerHTML=`
+    <span>📅 Fin d'année ${year} — Archiver le bilan ?</span>
+    <button onclick="archiveYear(${year})" style="padding:5px 12px;border-radius:99px;background:#fff;color:#1b4b87;font-weight:600;font-size:12px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;">Archiver</button>
+    <button onclick="document.getElementById('archiveBanner').remove()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:16px;">✕</button>`;
+  document.body.appendChild(banner);
+}
+
+function archiveYear(year){
+  const weeks=[];
+  let wk=year+'W01';
+  for(let i=0;i<54;i++){
+    const{year:wy}=parseWeekKey(wk);
+    if(wy>year)break;
+    weeks.push(wk);wk=nextWeekKey(wk);
+  }
+  let loicMin=0,perrineMin=0,loicDone=0,perrineDone=0,loicTasks=0,perrineTasks=0;
+  weeks.forEach(wk=>{
+    const checks=mst.checks?.[wk]||{};
+    getWeekTasks(wk).forEach(t=>{
+      if(t.owner==='loic'){loicTasks++;loicMin+=t.min;if(checks[t.id]){loicDone++;}}
+      else{perrineTasks++;perrineMin+=t.min;if(checks[t.id]){perrineDone++;}}
+    });
+  });
+  if(!mst.archives)mst.archives={};
+  mst.archives[year]={
+    year,loicMin,perrineMin,loicDone,perrineDone,loicTasks,perrineTasks,
+    archivedAt:Date.now()
+  };
+  mst['arch_'+year]=1;
+  saveMst();
+  document.getElementById('archiveBanner')?.remove();
+  showArchiveSuccess(year,loicMin,perrineMin,loicDone+perrineDone,loicTasks+perrineTasks);
+}
+
+function showArchiveSuccess(year,lMin,pMin,done,total){
+  const toast=document.createElement('div');
+  toast.style.cssText='position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:var(--gr);color:#fff;padding:10px 20px;border-radius:12px;font-size:13px;font-family:"DM Sans",sans-serif;z-index:9000;box-shadow:0 4px 20px rgba(0,0,0,.2);max-width:calc(100vw - 2rem);text-align:center;';
+  const pct=total>0?Math.round(done/total*100):0;
+  toast.innerHTML=`✅ Année ${year} archivée — ${done}/${total} tâches (${pct}%) · Loïc ${fmtMin(lMin)} / Perrine ${fmtMin(pMin)}`;
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(),5000);
+}
+
+/* ── Onglet Projection annuelle ── */
+function renderPlanAnnual(body){
+  body.className='plan-body full';
+  body.style.padding='1.25rem';
+  body.style.overflowY='auto';
+
+  const curYear=new Date().getFullYear();
+  const years=Array.from({length:2040-2025+1},(_,i)=>2025+i);
+
+  // Year tabs
+  const tabWrap=document.createElement('div');
+  tabWrap.style.cssText='display:flex;gap:6px;margin-bottom:1.25rem;flex-wrap:wrap;';
+  years.forEach(y=>{
+    const btn=document.createElement('button');
+    const hasArchive=!!(mst.archives?.[y]);
+    btn.style.cssText=`padding:6px 16px;border-radius:99px;border:1px solid var(--bdm);background:var(--sf);color:var(--tx2);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;`;
+    btn.textContent=(y===curYear?'📅 ':y>curYear?'🔮 ':'📦 ')+y+(hasArchive?' ✓':'');
+    btn.onclick=()=>{
+      tabWrap.querySelectorAll('button').forEach(b=>b.style.background='var(--sf)');
+      btn.style.background='var(--s2)';
+      renderAnnualYear(body,y,tabWrap);
+    };
+    tabWrap.appendChild(btn);
+  });
+  body.appendChild(tabWrap);
+
+  // Show archives if any
+  if(mst.archives&&Object.keys(mst.archives).length>0){
+    const archSection=document.createElement('div');
+    archSection.id='archSection';
+    body.appendChild(archSection);
+  }
+
+  renderAnnualYear(body,curYear,tabWrap);
+  // Activate first button
+  tabWrap.querySelector('button').style.background='var(--s2)';
+}
+
+function renderAnnualYear(body,year,tabWrap){
+  // Remove previous year content (keep tabWrap)
+  const existing=body.querySelector('.annual-content');
+  if(existing)existing.remove();
+
+  const wrap=document.createElement('div');
+  wrap.className='annual-content';
+
+  const archive=mst.archives?.[year];
+  const curYear=new Date().getFullYear();
+  const isFuture=year>curYear;
+  const isPast=year<curYear;
+
+  // Stats cards
+  const weeks=[];
+  let wk=year+'W01';
+  for(let i=0;i<54;i++){const{year:wy}=parseWeekKey(wk);if(wy>year)break;weeks.push(wk);wk=nextWeekKey(wk);}
+
+  let loicMin=0,perrineMin=0,loicDone=0,perrineDone=0,loicTasks=0,perrineTasks=0;
+  if(archive){
+    ({loicMin,perrineMin,loicDone,perrineDone,loicTasks,perrineTasks}=archive);
+  } else {
+    weeks.forEach(wk=>{
+      const checks=mst.checks?.[wk]||{};
+      getWeekTasks(wk).forEach(t=>{
+        if(t.owner==='loic'){loicTasks++;loicMin+=t.min;if(checks[t.id])loicDone++;}
+        else{perrineTasks++;perrineMin+=t.min;if(checks[t.id])perrineDone++;}
+      });
+    });
+  }
+
+  const totalMin=loicMin+perrineMin;
+  const loicPct=totalMin>0?Math.round(loicMin/totalMin*100):50;
+  const donePct=loicTasks+perrineTasks>0?Math.round((loicDone+perrineDone)/(loicTasks+perrineTasks)*100):0;
+
+  // Summary cards
+  const grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.25rem;';
+  grid.innerHTML=`
+    <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:1rem;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#1b4b87;display:inline-block;"></span><span style="font-size:12px;font-weight:600;">Loïc</span></div>
+      <div style="font-family:'Fraunces',serif;font-size:24px;font-weight:600;">${fmtMin(loicMin)}</div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:3px;">${loicPct}% du total · ${loicTasks} tâches</div>
+      ${!isFuture?`<div style="font-size:11px;color:var(--gr);margin-top:5px;">✓ ${fmtMin(loicDone*loicMin/(loicTasks||1))} effectuées (${loicTasks>0?Math.round(loicDone/loicTasks*100):0}%)</div>`:'<div style="font-size:11px;color:var(--tx3);margin-top:5px;">Projection basée sur le planning</div>'}
+    </div>
+    <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:1rem;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#b07a2c;display:inline-block;"></span><span style="font-size:12px;font-weight:600;">Perrine</span></div>
+      <div style="font-family:'Fraunces',serif;font-size:24px;font-weight:600;">${fmtMin(perrineMin)}</div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:3px;">${100-loicPct}% du total · ${perrineTasks} tâches</div>
+      ${!isFuture?`<div style="font-size:11px;color:var(--gr);margin-top:5px;">✓ ${fmtMin(perrineDone*perrineMin/(perrineTasks||1))} effectuées (${perrineTasks>0?Math.round(perrineDone/perrineTasks*100):0}%)</div>`:'<div style="font-size:11px;color:var(--tx3);margin-top:5px;">Projection basée sur le planning</div>'}
+    </div>`;
+  wrap.appendChild(grid);
+
+  // Balance bar
+  const balDiv=document.createElement('div');
+  balDiv.style.cssText='background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:.875rem;margin-bottom:1.25rem;';
+  const diff=Math.abs(loicMin-perrineMin);
+  const bal=diff<60; // < 1h difference over a year = balanced
+  balDiv.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:12px;font-weight:600;">${isFuture?'Projection':'Répartition'} ${year} — ${weeks.length} semaines</span>
+      <span style="font-size:11px;font-weight:600;color:${bal?'var(--gr)':'var(--am)'};background:${bal?'var(--grl)':'var(--aml)'};padding:2px 8px;border-radius:99px;">${bal?'⚖️ Équilibré':'⚠️ Écart '+fmtMin(diff)}</span>
+    </div>
+    <div style="display:flex;height:10px;border-radius:99px;overflow:hidden;">
+      <div style="width:${loicPct}%;background:#1b4b87;border-radius:99px 0 0 99px;"></div>
+      <div style="flex:1;background:#b07a2c;border-radius:0 99px 99px 0;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:11px;color:var(--tx3);">
+      <span>● Loïc ${loicPct}% · ${fmtMin(loicMin)}</span>
+      <span>● Perrine ${100-loicPct}% · ${fmtMin(perrineMin)}</span>
+    </div>
+    ${!isFuture&&donePct>0?`<div style="margin-top:8px;height:4px;background:var(--bd);border-radius:99px;overflow:hidden;"><div style="width:${donePct}%;height:100%;background:var(--gr);border-radius:99px;"></div></div><div style="font-size:10px;color:var(--tx3);margin-top:3px;">Progression globale : ${donePct}%</div>`:''}
+    ${isPast&&!archive?`<button onclick="archiveYear(${year})" style="margin-top:10px;padding:5px 14px;border-radius:99px;border:1px solid var(--grm);background:var(--grl);color:var(--gr);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📦 Archiver ${year}</button>`:''}`;
+  wrap.appendChild(balDiv);
+
+  // Monthly breakdown chart (12 months)
+  const chartTitle=document.createElement('div');
+  chartTitle.style.cssText='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--tx3);margin-bottom:8px;';
+  chartTitle.textContent=isFuture?'Projection mois par mois':'Réalisation mois par mois';
+  wrap.appendChild(chartTitle);
+
+  const months=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  const monthData=Array(12).fill(null).map(()=>({l:0,p:0,ld:0,pd:0}));
+  weeks.forEach(wk=>{
+    const{week}=parseWeekKey(wk);
+    // Approximate month from week number
+    const approxMonth=Math.min(11,Math.floor((week-1)/4.33));
+    const checks=mst.checks?.[wk]||{};
+    getWeekTasks(wk).forEach(t=>{
+      if(t.owner==='loic'){monthData[approxMonth].l+=t.min;if(checks[t.id])monthData[approxMonth].ld+=t.min;}
+      else{monthData[approxMonth].p+=t.min;if(checks[t.id])monthData[approxMonth].pd+=t.min;}
+    });
+  });
+
+  const maxMonthMin=Math.max(...monthData.map(m=>m.l+m.p),1);
+  const chartCard=document.createElement('div');
+  chartCard.style.cssText='background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:.875rem;';
+  months.forEach((m,i)=>{
+    const{l,p,ld,pd}=monthData[i];
+    const total=l+p;
+    const lPct=total>0?Math.round(l/maxMonthMin*100):0;
+    const pPct=total>0?Math.round(p/maxMonthMin*100):0;
+    const lDonePct=l>0?Math.round(ld/l*100):0;
+    const pDonePct=p>0?Math.round(pd/p*100):0;
+    const curMonth=new Date().getMonth();
+    const isCurMonth=i===curMonth&&year===curYear;
+
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:6px;';
+    row.innerHTML=`
+      <span style="font-size:10px;color:${isCurMonth?'var(--gr)':'var(--tx3)'};min-width:28px;font-weight:${isCurMonth?700:400};">${m}</span>
+      <div style="flex:1;">
+        <div style="display:flex;gap:2px;height:10px;border-radius:3px;overflow:hidden;margin-bottom:2px;">
+          <div style="width:${lPct}%;background:${isCurMonth?'#1b4b87':'rgba(27,75,135,.35)'};border-radius:3px;overflow:hidden;">
+            ${!isFuture&&lDonePct>0?`<div style="width:${lDonePct}%;height:100%;background:#1b4b87;"></div>`:''}
+          </div>
+        </div>
+        <div style="display:flex;gap:2px;height:10px;border-radius:3px;overflow:hidden;">
+          <div style="width:${pPct}%;background:${isCurMonth?'#b07a2c':'rgba(176,122,44,.35)'};border-radius:3px;overflow:hidden;">
+            ${!isFuture&&pDonePct>0?`<div style="width:${pDonePct}%;height:100%;background:#b07a2c;"></div>`:''}
+          </div>
+        </div>
+      </div>
+      <div style="font-size:9px;color:var(--tx3);min-width:70px;text-align:right;">
+        L:${fmtMin(l)} P:${fmtMin(p)}
+      </div>`;
+    chartCard.appendChild(row);
+  });
+  wrap.appendChild(chartCard);
+
+  body.appendChild(wrap);
+}
 /* ── Historique with expandable weeks ── */
 function renderPlanHist(body){
   body.className='plan-body full';
@@ -3545,6 +3825,7 @@ function appInit(){
   document.getElementById('sidebarHE').style.display='none';
   syncFields();
   renderAll();
+  checkYearArchive();
   document.getElementById('fieldName').addEventListener('input',e=>{st['meta_name']=e.target.value;saveP();document.title=(e.target.value||'Ménage')+'— Planning';});
   document.getElementById('fieldDate').addEventListener('change',e=>{st['meta_date']=e.target.value;saveP();updateCountdownBanner();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeCeleb();closeDashboard();closeEffortModal();closePlanning();}});
