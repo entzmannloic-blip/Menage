@@ -3002,10 +3002,14 @@ function renderGlobalView(area){
             </div>
           </div>
           <div class="done-badge">Fait</div>
+          <div class="task-acts">
+            <button class="task-act" title="Note" onclick="event.stopPropagation();toggleNote('${task.id}')">📝</button>
+            ${TIPS[task.id]?`<button class="task-act tip" title="Conseil expert" onclick="event.stopPropagation();openTipSheet({id:'${task.id}',label:${JSON.stringify(task.label)}})">💡</button>`:''}
+          </div>
         </div>`;
 
       const row=card.querySelector('.task-row');
-      row.onclick=()=>{toggle(task.id);};
+      row.onclick=e=>{if(e.target.closest('.task-act'))return;toggle(task.id);};
       row.onkeydown=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();toggle(task.id);}};
       area.appendChild(card);
     });
@@ -3784,7 +3788,7 @@ function buildCard(task,secId,_unused,allSectionTasks){
     openEffortDropdown(task, efBadge);
   });
 
-  row.onclick=e=>{if(e.target.closest('.drag-handle')||e.target.id===('ef_badge_'+task.id))return;toggle(task.id);};
+  row.onclick=e=>{if(e.target.closest('.drag-handle')||e.target.closest('.task-act')||e.target.id===('ef_badge_'+task.id))return;toggle(task.id);};
   row.onkeydown=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();toggle(task.id);}};
   card.appendChild(row);
 
