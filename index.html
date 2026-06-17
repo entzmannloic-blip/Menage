@@ -555,6 +555,20 @@ body::before{
 .task-act{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:99px;cursor:pointer;border:none;background:none;font-size:13px;color:var(--tx3);transition:all .14s;}
 .task-act:hover{background:var(--s2);color:var(--tx);}
 .task-act.del:hover{background:var(--rdl);color:var(--rd);}
+.task-act.tip{color:var(--am);background:var(--aml);border:1px solid var(--amm);}
+.task-act.tip:hover{background:#fdd5b0;color:#8a4518;}
+
+/* ══ TIP SHEET — Fiche expert ══ */
+.tip-block{padding:14px 1.25rem;border-bottom:1px solid var(--bd);}
+.tip-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;}
+.tip-row:last-child{margin-bottom:0;}
+.tip-icon{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;margin-top:1px;}
+.tip-icon.prod{background:var(--aml);}
+.tip-icon.step{background:#e4eef9;}
+.tip-icon.star{background:#fef9ec;}
+.tip-icon.time{background:var(--rdl);}
+.tip-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);margin-bottom:3px;}
+.tip-txt{font-size:12.5px;color:var(--tx);line-height:1.55;}
 
 /* ══ DONE BADGE ══ */
 .done-badge{font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--grl);color:var(--gr);border:1.5px solid var(--grm);opacity:0;transition:opacity .22s;flex-shrink:0;}
@@ -1870,6 +1884,250 @@ const GENERAL=[
 
 const ALL_SECS=[...ROOMS,...GENERAL];
 
+/* ═══ TIPS — Fiches expert par tâche ═══ */
+const TIPS={
+  apt_asp:{
+    prod:'Aspirateur avec embout brosse (plinthes) et suceur plat (sous les meubles).',
+    steps:'Commencer par les pièces les plus poussiéreuses — chambre, salon — puis terminer par l\'entrée. Toujours de l\'intérieur vers la sortie pour ne pas repasser sur le propre. Relever les chaises sur la table avant. Deux passages croisés sur les tapis (sens + contre-sens) pour déloger les fibres incrustées.',
+    tip:'Ne pas aspirer si tu vas encore secouer des coussins ou faire les poussières — sinon tu refais le même travail deux fois.',
+    time:'18–22 min pour un 2 pièces bien rangé. +5 min si les chats ont traîné.'
+  },
+  apt_serp:{
+    prod:'Savon noir dilué (1 bouchon pour 5 L d\'eau chaude) ou nettoyant sol multi-usage. Microfibre plate de préférence.',
+    steps:'Toujours aspirer avant. Eau chaude = efficacité x2 sur les graisses. Essorer à fond la microfibre — un sol trop mouillé sèche mal et laisse des traces. Insister sur les coins de cuisine et devant les poubelles. Rincer le seau si l\'eau devient grise rapidement.',
+    tip:'Savon noir pur non dilué sur parquet stratifié = risque de gonflement. Toujours bien diluer.',
+    time:'15–20 min. La cuisine prend 30% du temps à elle seule.'
+  },
+  apt_pous:{
+    prod:'Chiffon microfibre légèrement humide. Pinceau plumeau pour les recoins hauts.',
+    steps:'Toujours du haut vers le bas — étagères et luminaires → meubles → plinthes. La poussière tombe, on l\'attrape en descendant. Microfibre humide > plumeau : le plumeau redistribue, la microfibre capte. Miroir de l\'entrée : nettoyant vitres + microfibre sèche. Câbles et prises : chiffon sec uniquement.',
+    tip:'Faire les poussières AVANT de passer l\'aspirateur, pas après.',
+    time:'8–10 min.'
+  },
+  apt_poub:{
+    prod:'Nettoyant multi-usage + bicarbonate pour les odeurs.',
+    steps:'Vider tous les sacs. Rincer le fond du bac à l\'eau chaude si résidus. Pulvériser nettoyant multi-usage à l\'intérieur, laisser agir 1 min. Essuyer avec papier absorbant ou chiffon dédié poubelle. Saupoudrer une pincée de bicarbonate au fond avant de remettre le sac neuf.',
+    tip:'Mettre 2 sacs superposés dans la poubelle cuisine : quand on en vide un, le suivant est déjà en place.',
+    time:'12–15 min pour toutes les poubelles de l\'appart.'
+  },
+  apt_miroir:{
+    prod:'Nettoyant vitres + microfibre sèche.',
+    steps:'Pulvériser sur le chiffon (pas sur le miroir — évite les coulures sur le cadre). Essuyer en S de haut en bas. Finir en mouvement circulaire avec une microfibre sèche propre.',
+    tip:'Traces tenaces (doigts, projections) : une goutte de vinaigre blanc pur sur le chiffon avant le nettoyant vitres.',
+    time:'3 min.'
+  },
+  apt_litiere:{
+    prod:'Bicarbonate + nettoyant multi-usage sans parfum fort. Les chats fuient les odeurs chimiques et désertent la litière.',
+    steps:'Vider complètement dans un sac fermé. Rincer le bac à l\'eau chaude. Pulvériser nettoyant multi-usage, frotter, rincer abondamment. Sécher complètement avant de remettre la litière — l\'humidité favorise les bactéries. Saupoudrer une fine couche de bicarbonate au fond du bac sec avant de remettre la litière neuve.',
+    tip:'Jamais de produits parfumés forts — les chats refusent une litière qui sent le "propre" chimique humain.',
+    time:'12–15 min par litière.'
+  },
+  mc_plaques:{
+    prod:'Dégraissant cuisine ou liquide vaisselle concentré + crème à récurer pour les brûlures tenaces.',
+    steps:'Laisser refroidir complètement. Si plaques gaz : retirer grilles et brûleurs, les tremper dans l\'évier avec eau chaude + liquide vaisselle. Pulvériser dégraissant, laisser agir 3–5 min. Frotter avec éponge côté doux d\'abord. Zones brûlées : crème à récurer + petite brosse en cercles. Rincer, sécher à la microfibre.',
+    tip:'Bicarbonate pâteux (bicarbonate + quelques gouttes d\'eau) laissé 10 min sur les taches carbonisées — redoutable sur les brûlures de lait.',
+    time:'5–8 min en entretien hebdo. 15–20 min si accumulation.'
+  },
+  mc_cred:{
+    prod:'Nettoyant multi-usage + microfibre. Vinaigre blanc dilué si carrelage avec joints clairs.',
+    steps:'Pulvériser nettoyant multi-usage, laisser agir 1–2 min (les projections grasses collent). Essuyer avec microfibre humide en commençant par le haut. Joints : vieille brosse à dents + vinaigre blanc pour blanchir sans abrasion. Finir à la microfibre sèche pour éviter les traces.',
+    tip:'Passer la crédence juste après la cuisson du repas du soir — encore chaude, les graisses sont plus fluides.',
+    time:'4–6 min.'
+  },
+  mc_evier:{
+    prod:'Crème à récurer pour l\'évier inox, anticalcaire pour le robinet, vinaigre blanc pour l\'égouttoir.',
+    steps:'Rincer à l\'eau chaude pour ramollir les résidus. Crème à récurer dans l\'évier, frotter en cercles avec éponge, rincer — retrouve la brillance de l\'inox. Robinet : anticalcaire, laisser 2 min, frotter avec vieille brosse à dents autour de la base, rincer, sécher à la microfibre. Égouttoir : vinaigre blanc pur, laisser 5 min, rincer.',
+    tip:'Sécher le robinet à la microfibre après chaque utilisation = zéro calcaire à l\'entretien hebdo. 30 secondes qui changent tout.',
+    time:'5–7 min.'
+  },
+  mc_plan:{
+    prod:'Nettoyant multi-usage pour le plan, microfibre sèche pour les poussières.',
+    steps:'Dégager les objets du plan (grille-pain, bouilloire...). Essuyer les miettes à la main ou au chiffon sec. Pulvériser nettoyant multi-usage, laisser agir 1 min. Microfibre humide en grands mouvements linéaires. Insister sur les bords et l\'espace autour de la plaque. Finir à la microfibre sèche sur l\'inox ou le granit — évite les traces d\'eau.',
+    tip:'Toujours finir par un passage microfibre sèche sur les surfaces brillantes.',
+    time:'8–10 min.'
+  },
+  mc_portes:{
+    prod:'Nettoyant multi-usage + microfibre.',
+    steps:'Pulvériser nettoyant multi-usage, laisser agir 1–2 min. Essuyer du haut vers le bas. Insister sur les poignées — zone la plus touchée et la plus grasse. Finir à la microfibre sèche sur les façades laquées ou brillantes.',
+    tip:'Placards blanc brillant : une goutte de vinaigre blanc sur la microfibre finale élimine les traces tenaces sans attaquer le laqué.',
+    time:'12–15 min pour tous les placards de la cuisine.'
+  },
+  mc_frigo:{
+    prod:'Bicarbonate + eau tiède (1 càs pour 1 L) pour l\'intérieur. Nettoyant multi-usage pour l\'extérieur. Pas de produit chimique fort à l\'intérieur — risque de contamination alimentaire.',
+    steps:'Sortir tous les aliments, jeter les périmés. Retirer clayettes et bacs à légumes, les tremper dans l\'évier. Solution bicarbonate sur chiffon : nettoyer toutes les parois. Joints de porte à la brosse à dents + bicarbonate (zone à moisissures). Récurer les clayettes, rincer, sécher. Remettre en place. Extérieur au nettoyant multi-usage.',
+    tip:'Un bol de bicarbonate ouvert dans le frigo absorbe les odeurs durablement. À renouveler tous les 2 mois.',
+    time:'20–25 min. Bloquer ce créneau — ne pas commencer si pressé.'
+  },
+  mc_micro:{
+    prod:'Astuce vapeur maison — aucun produit chimique nécessaire.',
+    steps:'Placer un bol d\'eau + jus d\'un demi-citron (ou 3 càs de vinaigre blanc) dans le micro-ondes. Chauffer 3–4 min à pleine puissance. Laisser reposer 2 min porte fermée — la vapeur continue d\'agir. Sortir le bol, retirer le plateau tournant. Essuyer l\'intérieur avec chiffon humide — tout part sans frotter. Laver le plateau au liquide vaisselle. Extérieur au nettoyant multi-usage.',
+    tip:'Odeur de brûlé persistante : laisser un bol de bicarbonate dans le micro froid pendant une nuit.',
+    time:'10 min dont 5 min d\'attente passive.'
+  },
+  mc_four:{
+    prod:'Dégraissant four (le plus efficace), ou pâte bicarbonate + liquide vaisselle pour version naturelle.',
+    steps:'Four froid et éteint. Retirer les grilles — les tremper dans l\'évier (ou laisser une nuit). Pulvériser dégraissant sur toutes les parois, pas sur la résistance ni le ventilateur. Laisser agir 20–30 min minimum. Éponger d\'abord sans frotter pour enlever la masse. Frotter ensuite. Vitre : anticalcaire pour les dépôts blancs, crème à récurer pour les brûlures, nettoyant vitres en finition. Rincer toutes les parois plusieurs fois à l\'éponge humide.',
+    tip:'Ne jamais laisser une projection sécher plusieurs semaines — ça carbonise. Un passage rapide après une cuisson grasse sauve 30 min de récurage.',
+    time:'30–40 min actif. Le temps d\'attente du produit ne compte pas — fais autre chose pendant.'
+  },
+  mc_lv:{
+    prod:'Vinaigre blanc + bicarbonate. Pas de produit dédié nécessaire.',
+    steps:'Retirer et nettoyer le filtre : dévisser, rincer sous l\'eau chaude, brosse à dents + liquide vaisselle, rincer, remettre. Nettoyer les joints de porte et le pourtour au chiffon humide. Bras de lavage : vérifier que les trous ne sont pas bouchés, curer au cure-dent si besoin. Cycle détartrage : 200 ml de vinaigre blanc dans le fond (pas dans le bac), lancer un cycle chaud à vide. Enchaîner avec un cycle déodorant : 3 càs de bicarbonate au fond, court cycle chaud à vide.',
+    tip:'Le filtre se nettoie en 3 min — c\'est ce qu\'on néglige le plus et qui cause les mauvaises odeurs.',
+    time:'20 min actif + cycles automatiques en parallèle.'
+  },
+  mc_mach:{
+    prod:'Vinaigre blanc + bicarbonate. Un nettoyant machine type Calgon 1× par an.',
+    steps:'Bac à lessive : le sortir entièrement, rincer, brosse à dents dans les compartiments (moisissures noires fréquentes), sécher avant de remettre. Joint de hublot : ouvrir le pli en caoutchouc — là où poussent les moisissures. Essuyer avec chiffon + vinaigre blanc. Moisissures installées : bicarbonate en pâte, 15 min, frotter, rincer. Tambour : essuyer à la microfibre humide. Cycle de nettoyage : 200 ml de vinaigre blanc dans le tambour, programme le plus chaud à vide (90°C si possible).',
+    tip:'Laisser le hublot entrouvert après chaque lavage — meilleure prévention contre les moisissures de joint. Un geste, zéro problème.',
+    time:'10 min actif + cycle automatique.'
+  },
+  mc_bouil:{
+    prod:'Vinaigre blanc ou acide citrique (1 càs dissous). Jamais de crème à récurer — risque d\'éclats dans l\'eau.',
+    steps:'Remplir à moitié + 100 ml de vinaigre blanc. Faire bouillir, laisser reposer 20–30 min. Vider, frotter légèrement si résidus, rincer 2–3 fois. Refaire bouillir de l\'eau claire et jeter — élimine tout goût résiduel de vinaigre.',
+    tip:'Calcaire très épais : laisser tremper une nuit entière. Le lendemain, le calcaire part à la main.',
+    time:'5 min actif + 20–30 min de trempage passif.'
+  },
+  mc_vitres:{
+    prod:'Nettoyant vitres + microfibre sèche.',
+    steps:'Pulvériser sur la microfibre (pas directement sur la vitre en cuisine — vapeurs de cuisson font coller). Essuyer en S de haut en bas. Passer côté sec en mouvement circulaire.',
+    tip:'Toujours nettoyer les vitres hors soleil direct — le produit sèche trop vite et laisse des traces.',
+    time:'4–5 min.'
+  },
+  mc_torchon:{
+    prod:'Machine à laver.',
+    steps:'Récupérer tous les torchons, sets de table et serviettes de table. Laver séparément du reste du linge (peluchent). À 60°C minimum pour éliminer les bactéries. Plier soigneusement et remettre en place.',
+    tip:'Ajouter 50 ml de vinaigre blanc dans le bac assouplissant à la place de l\'assouplissant chimique — les torchons restent plus absorbants et sans résidu.',
+    time:'5 min + temps machine.'
+  },
+  ms_tables:{
+    prod:'Nettoyant multi-usage (ou vinaigre blanc dilué pour bois huilé) + microfibre.',
+    steps:'Dégager les objets posés dessus. Pulvériser nettoyant multi-usage, laisser agir 1 min. Microfibre humide sur toute la surface + contours + pieds (oubliés 95% du temps). Finir à la microfibre sèche sur les tables brillantes.',
+    tip:'Bois naturel ou huilé : vinaigre blanc dilué (1/3 vinaigre / 2/3 eau) à la place du nettoyant — nourrit légèrement sans abîmer. Éviter les produits avec alcool sur bois verni.',
+    time:'6–8 min.'
+  },
+  ms_canape:{
+    prod:'Aspirateur avec embout tissu ou brosse à poils courts.',
+    steps:'Retirer tous les coussins. Aspirer le canapé en commençant par les recoins et fentes (miettes, poils). Aspirer chaque coussin des deux côtés en tapant légèrement. Aspirer les chaises (assises + dossiers). Remettre les coussins en les retournant si possible.',
+    tip:'Poils de chats incrustés dans le tissu : passer une main humide ou un gant en caoutchouc sur le tissu avant l\'aspirateur — les poils s\'agglomèrent et partent facilement.',
+    time:'20–25 min.'
+  },
+  ms_vitres:{
+    prod:'Nettoyant vitres + microfibre sèche ou raclette vitres.',
+    steps:'Nettoyer l\'intérieur d\'abord. Pulvériser nettoyant vitres sur la microfibre. Essuyer en S de haut en bas. Raclette ou microfibre sèche pour finir sans traces. Insister sur les coins.',
+    tip:'Le journal froissé humide est un mythe. La microfibre est bien plus efficace et ne laisse pas d\'encre. Nettoyer par temps couvert — le soleil direct fait sécher le produit trop vite.',
+    time:'8–10 min.'
+  },
+  ms_font:{
+    prod:'Liquide vaisselle sans parfum fort + bicarbonate. Jamais de produit chimique agressif — les chats y sont très sensibles.',
+    steps:'Débrancher la fontaine. Démonter toutes les pièces (pompe, filtre, bac). Jeter le filtre si usage dépassé. Tremper les pièces dans eau chaude + liquide vaisselle, frotter avec brosse douce. Rincer abondamment — aucune trace de savon. Bicarbonate sur les dépôts calcaires ou bio-films du bac. Rincer 2–3 fois, sécher, remonter, remplir d\'eau fraîche.',
+    tip:'Les bio-films (film visqueux dans le bac) sont des bactéries — les éliminer à chaque nettoyage est essentiel pour la santé des chats.',
+    time:'10–12 min.'
+  },
+  ch1_draps:{
+    prod:'Aucun produit. Technique pure.',
+    steps:'Retirer housse de couette, taies, drap-housse. Mettre en machine immédiatement. Drap-housse : commencer par les deux coins du bas du matelas, tirer vers les coins du haut. Taies : rentrer le coussin "en poche", un côté puis l\'autre. Housse de couette : méthode retournement — retourner la housse, attraper la couette par les coins à travers la housse, retourner l\'ensemble d\'un coup.',
+    tip:'Laver à 60°C minimum — tue les acariens. À 40°C, les acariens survivent. Secouer oreillers et couette sur le balcon 1× par mois.',
+    time:'12–15 min pour un lit double.'
+  },
+  ch1_nuit:{
+    prod:'Microfibre légèrement humide (eau claire ou nettoyant multi-usage très dilué).',
+    steps:'Dégager les objets de la table de nuit. Microfibre humide sur la surface, les bords, les pieds. Poussières chambre : du haut vers le bas — tête de lit, cadre, luminaires, tables de nuit, plinthes. Insister derrière et sous les meubles accessibles.',
+    tip:'Secouer les oreillers et la couette sur le balcon 1× par mois — élimine une bonne partie des acariens sans laver.',
+    time:'7–9 min.'
+  },
+  ch2_nuit:{
+    prod:'Microfibre légèrement humide.',
+    steps:'Même méthode que la chambre principale — dégager, microfibre humide surface + bords + pieds, poussières du haut vers le bas.',
+    tip:'Bureau : penser à dépoussiérer aussi derrière et sous l\'écran, et les câbles.',
+    time:'7–9 min.'
+  },
+  ch1_vitres:{
+    prod:'Nettoyant vitres + microfibre sèche.',
+    steps:'Pulvériser sur la microfibre. En S de haut en bas. Finir en circulaire avec microfibre sèche.',
+    tip:'Éviter juste après la douche ou si buée dans la pièce — attendre que l\'air se stabilise.',
+    time:'3–4 min.'
+  },
+  ch1_vitre2:{
+    prod:'Nettoyant vitres + microfibre sèche.',
+    steps:'Pulvériser sur la microfibre. En S de haut en bas. Finir en circulaire avec microfibre sèche.',
+    tip:'Hors soleil direct — le produit sèche trop vite et laisse des traces.',
+    time:'3–4 min.'
+  },
+  ch2_vitres:{
+    prod:'Nettoyant vitres + microfibre sèche.',
+    steps:'Pulvériser sur la microfibre. En S de haut en bas. Finir en circulaire avec microfibre sèche.',
+    tip:'Hors soleil direct — le produit sèche trop vite et laisse des traces.',
+    time:'3–4 min.'
+  },
+  sdb_miroir:{
+    prod:'Nettoyant vitres + microfibre sèche.',
+    steps:'Retirer d\'abord les traces de dentifrice et projections d\'eau avec chiffon humide. Pulvériser nettoyant vitres sur la microfibre. En S de haut en bas. Microfibre sèche pour finir brillant.',
+    tip:'Éviter le miroir juste après la douche — la buée revient immédiatement. Attendre 5 min que la salle de bain s\'aère.',
+    time:'3 min.'
+  },
+  sdb_evier:{
+    prod:'Anticalcaire pour le robinet et le fond de l\'évier, crème à récurer si taches, nettoyant multi-usage pour l\'extérieur.',
+    steps:'Anticalcaire en spray sur le robinet et le fond — laisser agir 2–3 min. Frotter le robinet avec vieille brosse à dents (autour de la base = zone critique). Crème à récurer si fond tâché — cercles doux avec éponge. Rincer abondamment, sécher le robinet à la microfibre.',
+    tip:'Vinaigre blanc pur sur le robinet 30 secondes après chaque nettoyage = aucun calcaire visible la semaine suivante.',
+    time:'5–7 min.'
+  },
+  sdb_vitre:{
+    prod:'Anticalcaire + nettoyant vitres en finition. Raclette si disponible.',
+    steps:'Pulvériser anticalcaire généreusement sur toute la vitre, laisser agir 3–5 min (le produit fait le travail, pas le frottage). Frotter avec éponge douce en cercles. Rincer à grande eau. Nettoyant vitres + raclette ou microfibre sèche pour finir sans traces.',
+    tip:'Passer la raclette sur la vitre après chaque douche (10 secondes) = anticalcaire jamais nécessaire. Un seul geste qui change tout.',
+    time:'5–7 min nettoyage, 10 secondes entretien quotidien.'
+  },
+  sdb_baig:{
+    prod:'Nettoyant multi-usage pour les parois et le bac, anticalcaire pour les dépôts blancs, bicarbonate pour les joints.',
+    steps:'Pulvériser nettoyant multi-usage sur les parois et le bac, laisser agir 2 min. Frotter avec éponge douce (pas grattante sur les parois acryliques). Dépôts calcaires blancs : anticalcaire, laisser 5 min, frotter. Joints de silicone : bicarbonate en pâte + vieille brosse à dents. Rincer abondamment. Nettoyer l\'étagère.',
+    tip:'Joints noircis (moisissures) : bicarbonate + quelques gouttes d\'huile essentielle tea tree, laisser 30 min. Plus naturel que les produits anti-moisissures.',
+    time:'10–12 min.'
+  },
+  sdb_seche:{
+    prod:'Chiffon microfibre légèrement humide.',
+    steps:'S\'assurer qu\'il est éteint ou froid. Microfibre humide sur chaque barre de haut en bas. Insister sur les fixations murales (dépôts calcaire + poussière). Finir à la microfibre sèche.',
+    tip:'Dépôts calcaires sur les barres métalliques : vinaigre blanc pur sur chiffon, frotter — brillance retrouvée.',
+    time:'4–5 min.'
+  },
+  sdb_serv:{
+    prod:'Machine à laver.',
+    steps:'Récupérer les serviettes utilisées et le tapis de bain. Laver séparément du reste (les serviettes peluchent). Sortir les serviettes propres, plier en trois dans le sens de la longueur, accrocher. Tapis de bain propre devant la douche.',
+    tip:'Laver à 60°C minimum — nid à bactéries et champignons. Ajouter 50 ml de vinaigre blanc dans le bac assouplissant : remplace l\'assouplissant chimique et garde les serviettes absorbantes.',
+    time:'5–7 min (hors temps machine).'
+  },
+  wc_cuvette:{
+    prod:'Anticalcaire pour le tartre sous le bord et au fond. Nettoyant multi-usage pour l\'extérieur. Jamais de javel.',
+    steps:'Verser anticalcaire sous le bord de la cuvette, laisser agir 5–10 min. Pendant ce temps : nettoyer l\'extérieur de la cuvette et le dessous avec nettoyant multi-usage + chiffon dédié WC. Revenir frotter l\'intérieur avec brosse WC en insistant sous le bord et au siphon. Tirer la chasse.',
+    tip:'Une pastille de bicarbonate dans la cuvette après nettoyage neutralise les odeurs durablement. L\'anticalcaire suffit et est moins agressif pour les canalisations que la javel.',
+    time:'5–7 min.'
+  },
+  wc_lunette:{
+    prod:'Nettoyant multi-usage + chiffon ou lingette dédiée WC (ne jamais croiser avec le reste).',
+    steps:'Soulever la lunette et le couvercle. Nettoyer dessus + dessous de la lunette + dessus + dessous du couvercle. Nettoyer le dessus de la cuvette (souvent oublié). Charnières : zone critique souvent encrassée, nettoyer avec coton-tige ou brosse à dents.',
+    tip:'Toujours un chiffon dédié WC, jamais partagé avec le reste de la salle de bain — hygiène basique mais souvent négligée.',
+    time:'2–3 min.'
+  },
+  wc_pous:{
+    prod:'Microfibre sèche ou légèrement humide.',
+    steps:'Zones à ne pas oublier : dessus du réservoir, tuyaux d\'alimentation, tablette éventuelle, sol autour de la cuvette, plinthes. Passer le sol en dernier avec un chiffon dédié.',
+    tip:'Le sol autour de la cuvette est souvent le plus négligé et le plus contaminé. Toujours en dernier, chiffon dédié.',
+    time:'2–3 min.'
+  },
+  an2:{
+    prod:'Liquide vaisselle sans parfum fort. Rinçage abondant.',
+    steps:'Débrancher. Démonter toutes les pièces. Tremper dans eau chaude + liquide vaisselle, frotter avec brosse douce. Rincer abondamment — aucune trace de savon. Bicarbonate pour les dépôts ou bio-films. Rincer 2–3 fois, sécher, remonter.',
+    tip:'Vérifier que la pompe fonctionne correctement avant de partir pour un échange HomeExchange. Un bruit anormal = pompe à nettoyer ou remplacer.',
+    time:'10–12 min.'
+  },
+  p_robot2:{
+    prod:'Chiffon sec ou légèrement humide.',
+    steps:'Vider le bac à poussière dans la poubelle. Nettoyer le filtre (rincer ou tapoter selon modèle). Vérifier les brosses latérales et la brosse centrale — enlever les cheveux et poils enroulés avec des ciseaux. Essuyer les capteurs avec chiffon sec. Remplir le réservoir d\'eau si le robot est avec serpillère.',
+    tip:'Un robot avec brosses propres aspire 2× mieux et dure 2× plus longtemps. 5 min de maintenance = plusieurs mois de vie en plus.',
+    time:'6–8 min.'
+  }
+};
+
 /* ═══ STATE ═══ */
 const RK='hex_v9';
 const MK='hex_menage';
@@ -1935,6 +2193,56 @@ function closeBottomSheet(){
   if(ov)ov.classList.remove('on');
   const panel=document.getElementById('bsPanel');
   if(panel)panel.style.transform='';
+}
+
+/* ═══ TIP SHEET — Fiche expert ═══ */
+function openTipSheet(task){
+  const tip=TIPS[task.id];
+  if(!tip)return;
+  const sec=ALL_SECS.find(s=>s.tasks&&s.tasks.some(t=>t.id===task.id));
+  const ov=document.getElementById('bsOv');
+  const panel=document.getElementById('bsPanel');
+  const titleEl=document.getElementById('bsTitle');
+  const body=document.getElementById('bsBody');
+  if(!ov)return;
+
+  // Header avec contexte section
+  titleEl.innerHTML=`<span style="display:block;font-size:11px;font-weight:500;color:var(--tx3);margin-bottom:2px;font-family:'DM Sans',sans-serif;">${sec?sec.icon+' '+sec.name:'Conseil expert'}</span>${task.label}`;
+
+  body.innerHTML='';
+
+  function block(iconHtml,cls,label,txt){
+    const b=document.createElement('div');b.className='tip-block';
+    b.innerHTML=`<div class="tip-row">
+      <div class="tip-icon ${cls}">${iconHtml}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="tip-lbl">${label}</div>
+        <div class="tip-txt">${txt}</div>
+      </div>
+    </div>`;
+    body.appendChild(b);
+  }
+
+  if(tip.prod) block('🧴','prod','Produit',tip.prod);
+  if(tip.steps) block('📋','step','Étapes',tip.steps);
+  if(tip.tip) block('⭐','star','Astuce',tip.tip);
+  if(tip.time) block('⏱️','time','Durée réelle',tip.time);
+
+  // Bouton fermer
+  const footer=document.createElement('div');
+  footer.style.cssText='padding:12px 1.25rem 0;';
+  const btn=document.createElement('button');
+  btn.style.cssText='width:100%;padding:11px;border-radius:12px;border:1.5px solid var(--bdm);background:var(--s2);font-size:13px;font-weight:600;color:var(--tx2);cursor:pointer;font-family:"DM Sans",sans-serif;';
+  btn.textContent='Fermer';
+  btn.onclick=closeBottomSheet;
+  footer.appendChild(btn);
+  body.appendChild(footer);
+
+  ov.classList.add('on');
+  let startY=0;
+  panel.ontouchstart=e=>{startY=e.touches[0].clientY;};
+  panel.ontouchmove=e=>{const dy=e.touches[0].clientY-startY;if(dy>0)panel.style.transform=`translateY(${dy}px)`;};
+  panel.ontouchend=e=>{const dy=e.changedTouches[0].clientY-startY;if(dy>80){closeBottomSheet();}else{panel.style.transform='';}};
 }
 function addBsOption(body,{icon,label,sub,active,danger,onTap}){
   const opt=document.createElement('div');
@@ -3463,6 +3771,7 @@ function buildCard(task,secId,_unused,allSectionTasks){
     <div class="done-badge">Fait</div>
     <div class="task-acts">
       <button class="task-act" title="Note" onclick="event.stopPropagation();toggleNote('${task.id}')">📝</button>
+      ${TIPS[task.id]?`<button class="task-act tip" title="Conseil expert" onclick="event.stopPropagation();openTipSheet({id:'${task.id}',label:${JSON.stringify(task.label)}})">💡</button>`:''}
       ${isCustom?`<button class="task-act del" onclick="event.stopPropagation();openModal('del-task','${task.id}')">✕</button>`:''}
     </div>`;
 
