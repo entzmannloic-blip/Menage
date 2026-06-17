@@ -1494,6 +1494,17 @@ window.addEventListener('DOMContentLoaded', function(){
     if(n && window.innerWidth > 640) n.parentNode.removeChild(n);
   });
 });
+
+/* ── Délégation globale pour boutons 💡 (js-tip) ── */
+document.addEventListener('click', function(e){
+  const btn=e.target.closest('.js-tip');
+  if(!btn)return;
+  e.stopPropagation();
+  const tid=btn.dataset.tid;
+  if(!tid)return;
+  const task=ALL_SECS.flatMap(s=>s.tasks||[]).find(t=>t.id===tid);
+  if(task)openTipSheet(task);
+});
 </script>
 </head>
 <body>
@@ -3004,7 +3015,7 @@ function renderGlobalView(area){
           <div class="done-badge">Fait</div>
           <div class="task-acts">
             <button class="task-act" title="Note" onclick="event.stopPropagation();toggleNote('${task.id}')">📝</button>
-            ${TIPS[task.id]?`<button class="task-act tip" title="Conseil expert" onclick="event.stopPropagation();openTipSheet({id:'${task.id}',label:${JSON.stringify(task.label)}})">💡</button>`:''}
+            ${TIPS[task.id]?`<button class="task-act tip js-tip" data-tid="${task.id}" title="Conseil expert">💡</button>`:''}
           </div>
         </div>`;
 
@@ -3248,7 +3259,7 @@ function buildPlanTaskRow(task, wk, person, onToggle){
 
   // Checkbox toggle
   row.onclick=(e)=>{
-    if(e.target===durInp||e.target===editIcon||e.target===efBtn||efDropdown.contains(e.target))return;
+    if(e.target===durInp||e.target===editIcon||e.target===efBtn||efDropdown.contains(e.target)||e.target.closest('.task-act'))return;
     const nowDone=!isWeekDone(task.id,wk);
     setWeekDone(task.id,wk,nowDone,person);
     row.classList.toggle('done',nowDone);
@@ -3259,7 +3270,24 @@ function buildPlanTaskRow(task, wk, person, onToggle){
     if(onToggle)onToggle(task,nowDone);
   };
 
-  row.appendChild(cb);row.appendChild(info);
+  // Tip + note buttons
+  const acts=document.createElement('div');
+  acts.className='task-acts';
+  const noteBtn=document.createElement('button');
+  noteBtn.className='task-act';noteBtn.title='Note';noteBtn.textContent='📝';
+  noteBtn.onclick=e=>{e.stopPropagation();toggleNote(task.id);};
+  acts.appendChild(noteBtn);
+  if(TIPS[task.id]){
+    const tipBtn=document.createElement('button');
+    tipBtn.className='task-act tip js-tip';
+    tipBtn.dataset.tid=task.id;
+    tipBtn.title='Conseil expert';
+    tipBtn.textContent='💡';
+    tipBtn.onclick=e=>{e.stopPropagation();openTipSheet(task);};
+    acts.appendChild(tipBtn);
+  }
+
+  row.appendChild(cb);row.appendChild(info);row.appendChild(acts);
   return row;
 }
 
@@ -3775,7 +3803,7 @@ function buildCard(task,secId,_unused,allSectionTasks){
     <div class="done-badge">Fait</div>
     <div class="task-acts">
       <button class="task-act" title="Note" onclick="event.stopPropagation();toggleNote('${task.id}')">📝</button>
-      ${TIPS[task.id]?`<button class="task-act tip" title="Conseil expert" onclick="event.stopPropagation();openTipSheet({id:'${task.id}',label:${JSON.stringify(task.label)}})">💡</button>`:''}
+      ${TIPS[task.id]?`<button class="task-act tip js-tip" data-tid="${task.id}" title="Conseil expert">💡</button>`:''}
       ${isCustom?`<button class="task-act del" onclick="event.stopPropagation();openModal('del-task','${task.id}')">✕</button>`:''}
     </div>`;
 
